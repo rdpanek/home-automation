@@ -11,6 +11,13 @@ NETATMO_CLIENT_ID=
 NETATMO_SECRET=
 NETATMO_DEVICE_ID=
 
+SMARWIS=$(cat <<EOF
+[
+  {"place":"Pracovna","ip":"xxx.xxx.xxx.xxx"}
+  ]
+EOF
+)
+
 # prepare date for index and for timestamp
 elastic_index_date=$(date '+%Y.%m.%d')
 dt=$(date +"%Y-%m-%dT%H:%M:%S")
@@ -129,4 +136,33 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     "timestamp": "'${dt}'"
    }'
 
+done
+
+# +-------------------------------+
+# |       SMARWI DEVICES          |
+# +-------------------------------+
+
+for smarwi in $(echo "${SMARWIS}" | jq -r '.[] | @base64'); do
+  _jq() {
+    echo ${smarwi} | base64 --decode | jq -r ${1}
+  }
+
+  echo $(_jq '.place') $(_jq '.ip')
+  device_result_string=$(curl -X GET $(_jq '.ip')/statusn)
+  if [[ "$device_result_string" == *"pos:o"* ]]; then
+    is_device_opened=true
+  else
+    is_device_opened=false
+  fi
+
+  curl -X POST \
+  ${ELASTICCLUSTER_URI}/smarwi-${elastic_index_date}/windows \
+  -H 'Authorization: Basic '${ELASTIC_AUTH} \
+  -H 'Content-Type: application/json' \
+  -H 'cache-control: no-cache' \
+  -d '{
+  "place": "'$(_jq '.place')'",
+  "is_open": '$is_device_opened',
+  "timestamp": "'${dt}'"
+  }'
 done
