@@ -13,7 +13,10 @@ NETATMO_DEVICE_ID=
 
 SMARWIS=$(cat <<EOF
 [
-  {"place":"Pracovna","ip":"xxx.xxx.xxx.xxx"}
+  {"place":"Pracovna","ip":"192.168.1.203"},
+  {"place":"Kuchyn","ip":"192.168.1.106"},
+  {"place":"Obyvak","ip":"192.168.1.181"},
+  {"place":"Loznice","ip":"192.168.1.167"}
   ]
 EOF
 )
@@ -81,7 +84,6 @@ netatmo_senzors=$(curl -X POST \
   -H 'cache-control: no-cache' \
   -d 'access_token='${access_token}'&device_id='$NETATMO_DEVICE_ID'&undefined=')
 
-echo $netatmo_senzors
 for senzor in $(echo "${netatmo_senzors}"); do
     _jq() {
      echo ${senzor} | jq -r ${1}
@@ -118,6 +120,15 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     _jq() {
      echo ${module} | base64 --decode | jq -r ${1}
     }
+    moduleName=$(_jq '.module_name' | tr -d '[:space:]')
+    temperature=$(_jq '.dashboard_data.Temperature')
+    humidity=$(_jq '.dashboard_data.Humidity')
+    co2=$(_jq '.dashboard_data.CO2')
+    # CO2 se u venkovniho modulu nemeri
+    if [ "$co2" != 'null' ]; then
+       co2=$co2
+    fi
+    batteryPercent=$(_jq '.battery_percent')
    curl -X POST \
     ${ELASTICCLUSTER_URI}/netatmo-${elastic_index_date}/senzors \
     -H 'Authorization: Basic '${ELASTIC_AUTH} \
@@ -125,13 +136,13 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     -H 'cache-control: no-cache' \
     -d '{
     "moduleType": "additional",
-    "moduleName": "'$(_jq '.module_name' | tr -d '[:space:]')'",
-    "temperature": '$(_jq '.dashboard_data.Temperature')',
-    "co2": 0,
-    "humidity": '$(_jq '.dashboard_data.Humidity')',
+    "moduleName": "'$moduleName'",
+    "temperature": '$temperature',
+    "co2": '$co2',
+    "humidity": '$humidity',
     "noise": 0,
     "pressure": 0,
-    "batteryPercent": '$(_jq '.battery_percent')',
+    "batteryPercent": '$batteryPercent',
     "place": "tovarni",
     "timestamp": "'${dt}'"
    }'
