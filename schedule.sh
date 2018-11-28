@@ -90,7 +90,7 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
           fi
         fi
 
-        if (( $TEMPERATURE_LIMIT_PRACOVNA < $tempInt )) ; then
+        if (( $TEMPERATURE_LIMIT_PRACOVNA > $tempInt )) ; then
           echo "zavrit okno, pokud je otevrene"
           if [ "$isWindowOpened" = true ]; then
             echo "je otevrene - zaviram"
