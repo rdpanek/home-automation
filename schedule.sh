@@ -9,7 +9,8 @@ NETATMO_DEVICE_ID=
 
 pracovnaWindow=192.168.1.203
 
-TEMPERATURE_LIMIT_PRACOVNA=22
+TEMPERATURE_LIMIT_PRACOVNA=25
+CO2_LIMIT_PRACOVNA=1100
 
 # +-------------------------------+
 # |       NETATMO ACCESS          |
@@ -79,10 +80,13 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
           isWindowOpened=false
         fi
 
+
         # otevrit okno pokud je teplota v mistnostni vyssi jak 22
-        echo "Required: " $TEMPERATURE_LIMIT_PRACOVNA
-        echo "Actual: " $tempInt
-        if (( $tempInt >= $TEMPERATURE_LIMIT_PRACOVNA )); then
+        echo "TEMP Required: " $TEMPERATURE_LIMIT_PRACOVNA
+        echo "TEMP Actual: " $tempInt
+        echo "CO2 Required: " $CO2_LIMIT_PRACOVNA
+        echo "CO2 Actual: " $co2
+        if (( $tempInt >= $TEMPERATURE_LIMIT_PRACOVNA || $co2 >= $CO2_LIMIT_PRACOVNA)); then
           echo "otevrit okno, pokud je zavrene"
           if [ "$isWindowOpened" = false ]; then
             echo "je zavrene - oteviram"
@@ -90,7 +94,7 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
           fi
         fi
 
-        if (( $TEMPERATURE_LIMIT_PRACOVNA > $tempInt )) ; then
+        if (( $TEMPERATURE_LIMIT_PRACOVNA > $tempInt && $CO2_LIMIT_PRACOVNA > $co2 )) ; then
           echo "zavrit okno, pokud je otevrene"
           if [ "$isWindowOpened" = true ]; then
             echo "je otevrene - zaviram"
