@@ -8,15 +8,18 @@ NETATMO_SECRET=
 NETATMO_DEVICE_ID=
 
 pracovnaWindow=192.168.1.203
+kuchynWindow=192.168.1.106
+obyvakWindow=192.168.1.181
 
-TEMPERATURE_LIMIT_PRACOVNA=25
-CO2_LIMIT_PRACOVNA=1100
+TEMPERATURE_LIMIT=24
+CO2_LIMIT=1100
+HUMIDITY_LIMIT=50
 
 # +-------------------------------+
 # |       NETATMO ACCESS          |
 # +-------------------------------+
 
-netatmo_access=$(curl -X POST \
+netatmo_access=$(curl -s -X POST \
   https://api.netatmo.com/oauth2/token \
   -H 'Accept-Charset: UTF-8' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -32,11 +35,47 @@ for tok in $(echo "${netatmo_access}"); do
 
 done
 
+evaluate () {
+  temperature=$1
+  humidity=$2
+  co2=$3
+  ipWindow=$4
+  tempInt=$( echo "($temperature/1)" | bc)
+  # zjistit stav okna
+  device_window_status=$(curl -s -X GET $ipWindow/statusn)
+  if [[ "$device_window_status" == *"pos:o"* ]]; then
+    isWindowOpened=true
+  else
+    isWindowOpened=false
+  fi
+
+  # PRACOVNA
+  # otevrit okno pokud je teplota v mistnostni vyssi jak 22
+  echo "TEMP MAX: " $TEMPERATURE_LIMIT
+  echo "TEMP Actual: " $tempInt
+  echo "CO2 MAX: " $CO2_LIMIT
+  echo "CO2 Actual: " $co2
+  if (( $tempInt >= $TEMPERATURE_LIMIT || $co2 >= $CO2_LIMIT)); then
+    echo "otevrit okno, pokud je zavrene"
+    if [ "$isWindowOpened" = false ]; then
+      echo "je zavrene - oteviram"
+      curl -s -X GET $ipWindow/cmd/open
+    fi
+  fi
+
+  if (( $TEMPERATURE_LIMIT > $tempInt && $CO2_LIMIT > $co2 )) ; then
+    echo "zavrit okno, pokud je otevrene"
+    if [ "$isWindowOpened" = true ]; then
+      echo "je otevrene - zaviram"
+      curl -s -X GET $ipWindow/cmd/close
+    fi
+  fi
+}
 # +-------------------------------+
 # |     NETATMO BASE SENZOR       |
 # +-------------------------------+
 
-netatmo_senzors=$(curl -X POST \
+netatmo_senzors=$(curl -s -X POST \
   https://api.netatmo.com/api/getstationsdata \
   -H 'Accept-Charset: UTF-8' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -48,6 +87,18 @@ for senzor in $(echo "${netatmo_senzors}"); do
      echo ${senzor} | jq -r ${1}
     }
     additional_modules=$(_jq '.body.devices[0].modules')
+    kuchynTemperature=$(_jq '.body.devices[0].dashboard_data.Temperature')
+    kuchynHumidity=$(_jq '.body.devices[0].dashboard_data.Humidity')
+    kuchynCO2=$(_jq '.body.devices[0].dashboard_data.CO2')
+
+    # jeden senzor jak pro kuchyn tak i loznici
+    echo "Kuchyn"
+    evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $kuchynWindow
+    echo "---------------"
+
+    echo "Obyvak"
+    evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $obyvakWindow
+    echo "---------------"
 done
 
 
@@ -55,7 +106,6 @@ done
 # |  NETATMO ADDITIONAL MODUL     |
 # +-------------------------------+
 
-echo $additional_modules
 for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     _jq() {
      echo ${module} | base64 --decode | jq -r ${1}
@@ -71,36 +121,8 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
 
     if [ "$moduleName" == "Pracovna" ]; then
         echo $moduleName
-        tempInt=$( echo "($temperature/1)" | bc)
-        # zjistit stav okna
-        device_window_status=$(curl -X GET $pracovnaWindow/statusn)
-        if [[ "$device_window_status" == *"pos:o"* ]]; then
-          isWindowOpened=true
-        else
-          isWindowOpened=false
-        fi
-
-
-        # otevrit okno pokud je teplota v mistnostni vyssi jak 22
-        echo "TEMP Required: " $TEMPERATURE_LIMIT_PRACOVNA
-        echo "TEMP Actual: " $tempInt
-        echo "CO2 Required: " $CO2_LIMIT_PRACOVNA
-        echo "CO2 Actual: " $co2
-        if (( $tempInt >= $TEMPERATURE_LIMIT_PRACOVNA || $co2 >= $CO2_LIMIT_PRACOVNA)); then
-          echo "otevrit okno, pokud je zavrene"
-          if [ "$isWindowOpened" = false ]; then
-            echo "je zavrene - oteviram"
-            curl -X GET $pracovnaWindow/cmd/open
-          fi
-        fi
-
-        if (( $TEMPERATURE_LIMIT_PRACOVNA > $tempInt && $CO2_LIMIT_PRACOVNA > $co2 )) ; then
-          echo "zavrit okno, pokud je otevrene"
-          if [ "$isWindowOpened" = true ]; then
-            echo "je otevrene - zaviram"
-            curl -X GET $pracovnaWindow/cmd/close
-          fi
-        fi
+        evaluate $temperature $humidity $co2 $pracovnaWindow
+        echo "---------------"
     fi
 
 done
