@@ -55,7 +55,9 @@ evaluate () {
   echo "TEMP Actual: " $tempInt
   echo "CO2 MAX: " $CO2_LIMIT
   echo "CO2 Actual: " $co2
-  if (( $tempInt >= $TEMPERATURE_LIMIT || $co2 >= $CO2_LIMIT)); then
+  echo "HUMIDITY MAX: " $HUMIDITY_LIMIT
+  echo "HUMIDITY Actual: " $humidity
+  if (( $tempInt >= $TEMPERATURE_LIMIT || $co2 >= $CO2_LIMIT || $humidity >= $HUMIDITY_LIMIT)); then
     echo "otevrit okno, pokud je zavrene"
     if [ "$isWindowOpened" = false ]; then
       echo "je zavrene - oteviram"
@@ -63,7 +65,7 @@ evaluate () {
     fi
   fi
 
-  if (( $TEMPERATURE_LIMIT > $tempInt && $CO2_LIMIT > $co2 )) ; then
+  if (( $TEMPERATURE_LIMIT > $tempInt && $CO2_LIMIT > $co2 && $HUMIDITY_LIMIT > $humidity )) ; then
     echo "zavrit okno, pokud je otevrene"
     if [ "$isWindowOpened" = true ]; then
       echo "je otevrene - zaviram"
