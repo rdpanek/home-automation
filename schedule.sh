@@ -10,10 +10,18 @@ NETATMO_DEVICE_ID=
 pracovnaWindow=192.168.1.203
 kuchynWindow=192.168.1.106
 obyvakWindow=192.168.1.181
+lozniceWindow=192.168.1.167
 
 TEMPERATURE_LIMIT=24
 CO2_LIMIT=1100
 HUMIDITY_LIMIT=50
+
+# Pripadne vyuziti casoveho rozpeti
+#FLATTIME=$(date "+%H%M")
+#if [[ $FLATTIME > "0903" && "0905" > $FLATTIME ]] ; then
+#  echo "cas"
+#  echo $FLATTIME
+#fi
 
 # +-------------------------------+
 # |       NETATMO ACCESS          |
@@ -124,6 +132,11 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     if [ "$moduleName" == "Pracovna" ]; then
         echo $moduleName
         evaluate $temperature $humidity $co2 $pracovnaWindow
+        echo "---------------"
+    fi
+    if [ "$moduleName" == "Loznice" ]; then
+        echo $moduleName
+        evaluate $temperature $humidity $co2 $lozniceWindow
         echo "---------------"
     fi
 
