@@ -1,20 +1,20 @@
 #!/bin/bash
 
-
 NETATMO_USER=
 NETATMO_PASS=
 NETATMO_CLIENT_ID=
 NETATMO_SECRET=
+# device_id is mac address of station
 NETATMO_DEVICE_ID=
 
-pracovnaWindow=192.168.1.203
+pokojicekWindow=192.168.1.203
 kuchynWindow=192.168.1.106
 obyvakWindow=192.168.1.181
-lozniceWindow=192.168.1.167
+lozniceWindow=192.168.1.166
 
 TEMPERATURE_LIMIT=24
 CO2_LIMIT=1100
-HUMIDITY_LIMIT=50
+HUMIDITY_LIMIT=51
 
 # Pripadne vyuziti casoveho rozpeti
 #FLATTIME=$(date "+%H%M")
@@ -27,7 +27,7 @@ HUMIDITY_LIMIT=50
 # |       NETATMO ACCESS          |
 # +-------------------------------+
 
-netatmo_access=$(curl -s -X POST \
+netatmo_access=$(curl -X POST \
   https://api.netatmo.com/oauth2/token \
   -H 'Accept-Charset: UTF-8' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -57,7 +57,6 @@ evaluate () {
     isWindowOpened=false
   fi
 
-  # PRACOVNA
   # otevrit okno pokud je teplota v mistnostni vyssi jak 22
   echo "TEMP MAX: " $TEMPERATURE_LIMIT
   echo "TEMP Actual: " $tempInt
@@ -92,52 +91,39 @@ netatmo_senzors=$(curl -s -X POST \
   -H 'cache-control: no-cache' \
   -d 'access_token='${access_token}'&device_id='$NETATMO_DEVICE_ID'&undefined=')
 
-for senzor in $(echo "${netatmo_senzors}"); do
-    _jq() {
-     echo ${senzor} | jq -r ${1}
-    }
-    additional_modules=$(_jq '.body.devices[0].modules')
-    kuchynTemperature=$(_jq '.body.devices[0].dashboard_data.Temperature')
-    kuchynHumidity=$(_jq '.body.devices[0].dashboard_data.Humidity')
-    kuchynCO2=$(_jq '.body.devices[0].dashboard_data.CO2')
+additional_modules=$(echo $netatmo_senzors | jq '.body.devices[0].modules')
+kuchynTemperature=$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Temperature')
+kuchynHumidity=$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Humidity')
+kuchynCO2=$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.CO2')
 
-    # jeden senzor jak pro kuchyn tak i loznici
-    echo "Kuchyn"
-    evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $kuchynWindow
-    echo "---------------"
+# jeden senzor jak pro kuchyn tak i loznici
+#echo "Kuchyn"
+#evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $kuchynWindow
+#echo "---------------"
 
-    echo "Obyvak"
-    evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $obyvakWindow
-    echo "---------------"
-done
-
+echo "Obyvak"
+evaluate $kuchynTemperature $kuchynHumidity $kuchynCO2 $obyvakWindow
+echo "---------------"
 
 # +-------------------------------+
 # |  NETATMO ADDITIONAL MODUL     |
 # +-------------------------------+
 
 for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
-    _jq() {
-     echo ${module} | base64 --decode | jq -r ${1}
-    }
-    moduleName=$(_jq '.module_name' | tr -d '[:space:]')
-    temperature=$(_jq '.dashboard_data.Temperature')
-    humidity=$(_jq '.dashboard_data.Humidity')
-    co2=$(_jq '.dashboard_data.CO2')
-    # CO2 se u venkovniho modulu nemeri
-    if [ "$co2" != 'null' ]; then
-       co2=$co2
-    fi
+  
+  moduleName=$(echo $module | base64 --decode | jq '.module_name')
+  temperature=$(echo $module | base64 --decode | jq '.dashboard_data.Temperature')
+  humidity=$(echo $module | base64 --decode | jq '.dashboard_data.Humidity')
+  co2=$(echo $module | base64 --decode | jq '.dashboard_data.CO2')
+  # CO2 se u venkovniho modulu nemeri
+  if [ "$co2" != 'null' ]; then
+      co2=$co2
+  fi
 
-    if [ "$moduleName" == "Pracovna" ]; then
-        echo $moduleName
-        evaluate $temperature $humidity $co2 $pracovnaWindow
-        echo "---------------"
-    fi
-    if [ "$moduleName" == "Loznice" ]; then
-        echo $moduleName
-        evaluate $temperature $humidity $co2 $lozniceWindow
-        echo "---------------"
-    fi
-
+  if [ "$moduleName" == "Loznice" ]; then
+    echo $moduleName
+    evaluate $temperature $humidity $co2 $lozniceWindow
+    echo "---------------"
+  fi
+  
 done
