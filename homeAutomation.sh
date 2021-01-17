@@ -1,9 +1,11 @@
 #!/bin/bash
 
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
+
 ELASTICCLUSTER_URI=
 ELASTIC_AUTH=
 
-HUE_URI=
+HUE_URI=192.168.1.138
 HUE_USER=
 
 NETATMO_USER=
@@ -12,6 +14,10 @@ NETATMO_CLIENT_ID=
 NETATMO_SECRET=
 # device_id is mac address of station
 NETATMO_DEVICE_ID=
+
+TEMPERATURE_LIMIT=24
+CO2_LIMIT=1100
+HUMIDITY_LIMIT=53
 
 #{"place":"Pracovna","ip":"192.168.1.203"},
 #{"place":"Kuchyn","ip":"192.168.1.106"},
@@ -98,8 +104,11 @@ curl -X POST \
   "moduleType": "base",
   "moduleName": '$(echo $netatmo_senzors | jq '.body.devices[0].module_name')',
   "temperature": '$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Temperature')',
+  "temperatureLimit": '${TEMPERATURE_LIMIT}',
   "co2": '$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.CO2')',
+  "co2Limit": '${CO2_LIMIT}',
   "humidity": '$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Humidity')',
+  "humidityLimit": '${HUMIDITY_LIMIT}',
   "noise": '$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Noise')',
   "pressure": '$(echo $netatmo_senzors | jq '.body.devices[0].dashboard_data.Pressure')',
   "batteryPercent": 0,
@@ -133,8 +142,11 @@ for module in $(echo "${additional_modules}" | jq -r '.[] | @base64'); do
     "moduleType": "additional",
     "moduleName": '$(echo $moduleName)',
     "temperature": '$(echo $temperature)',
+    "temperatureLimit": '${TEMPERATURE_LIMIT}',
     "co2": '$(echo $co2)',
+    "co2Limit": '${CO2_LIMIT}',
     "humidity": '$(echo $humidity)',
+    "humidityLimit": '${HUMIDITY_LIMIT}',
     "noise": 0,
     "pressure": 0,
     "batteryPercent": '$(echo $batteryPercent)',

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin
+
 NETATMO_USER=
 NETATMO_PASS=
 NETATMO_CLIENT_ID=
@@ -14,7 +16,7 @@ lozniceWindow=192.168.1.166
 
 TEMPERATURE_LIMIT=24
 CO2_LIMIT=1100
-HUMIDITY_LIMIT=51
+HUMIDITY_LIMIT=53
 
 # Pripadne vyuziti casoveho rozpeti
 #FLATTIME=$(date "+%H%M")
